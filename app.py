@@ -7,8 +7,8 @@ import uuid
 # ----------------------------
 # SUPABASE SETUP
 # ----------------------------
-SUPABASE_URL = "https://zsgnsdsnaryzzquhthng.supabase.co"  # Replace with your project URL
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzZ25zZHNuYXJ5enpxdWh0aG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTE1MTgsImV4cCI6MjA3NTkyNzUxOH0.B5C2P7z_oU6DAl6N3CVnp2JvewNXe5puse6gtT5for0"                   # Replace with your anon/public key
+SUPABASE_URL = "https://xyzcompany.supabase.co"  # Replace with your project URL
+SUPABASE_KEY = "YOUR_ANON_KEY"                   # Replace with your anon/public key
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -54,7 +54,6 @@ if st.button("Add Transaction"):
     if amount <= 0:
         st.warning("Please enter a valid amount.")
     else:
-        # Insert transaction into Supabase
         supabase.table("transactions").insert({
             "user_id": st.session_state.user_id,
             "type": txn_type,
@@ -70,7 +69,7 @@ if st.button("Add Transaction"):
 # ----------------------------
 st.subheader("📊 Your Transaction History")
 
-# Fetch transactions for the current user
+# Fetch transactions for current user
 response = supabase.table("transactions").select("*").eq("user_id", st.session_state.user_id).execute()
 transactions = response.data  # List of dicts
 
@@ -95,7 +94,17 @@ if transactions:
     if selected_category != "All":
         df = df[df["category"] == selected_category]
 
-    st.dataframe(df[["type", "category", "amount", "note"]], use_container_width=True)
+    # Color rows based on type
+    def color_transactions(row):
+        if row['type'] == "Credit":
+            return ['background-color: #d4edda']*len(row)  # green
+        else:
+            return ['background-color: #f8d7da']*len(row)  # red
+
+    st.dataframe(
+        df[["type", "category", "amount", "note"]].style.apply(color_transactions, axis=1),
+        use_container_width=True
+    )
 
     # Charts
     fig1 = px.bar(df, x="category", y="amount", color="type", barmode="group", title="Category-wise Breakdown")
@@ -115,7 +124,6 @@ confirm_reset = st.checkbox("I want to delete ALL my transactions")
 
 if confirm_reset:
     if st.button("Reset All Transactions"):
-        # Delete only current user's transactions
         supabase.table("transactions").delete().eq("user_id", st.session_state.user_id).execute()
         st.success("All your transactions cleared successfully!")
         st.rerun()
