@@ -10,13 +10,6 @@ st.title("💰 Smart Finance Tracker")
 credit_categories = ["Salary", "Credit"]
 expense_categories = ["Food", "Rent", "Travel", "Entertainment", "Shopping", "Bills", "Other"]
 
-# --- Sidebar Options ---
-st.sidebar.subheader("Options")
-if st.sidebar.button("Clear All Transactions"):
-    session.query(Transaction).delete()
-    session.commit()
-    st.sidebar.success("All transactions cleared!")
-
 # --- Sidebar Filters ---
 st.sidebar.subheader("Filter Transactions")
 filter_type = st.sidebar.selectbox("Type", ["All", "Credit", "Expense"])
@@ -91,7 +84,6 @@ with st.form(key="txn_form"):
             st.session_state.note
         )
         st.success(f"{st.session_state.txn_type} transaction added!")
-        # Reset amount and note only
         st.session_state.amount = 0.0
         st.session_state.note = ""
     if reset:
@@ -99,6 +91,15 @@ with st.form(key="txn_form"):
         st.session_state.category = credit_categories[0]
         st.session_state.amount = 0.0
         st.session_state.note = ""
+
+# --- Reset All Transactions Button ---
+st.subheader("⚠️ Reset All Transactions")
+if st.button("Reset All Transactions"):
+    if st.confirm("Are you sure you want to delete ALL transactions?"):
+        session.query(Transaction).delete()
+        session.commit()
+        st.success("All transactions have been cleared!")
+        st.experimental_rerun()
 
 # --- Summary Cards ---
 total_credit = filtered_df[filtered_df["Type"]=="Credit"]["Amount"].sum()
