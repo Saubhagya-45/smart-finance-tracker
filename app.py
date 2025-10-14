@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
+import uuid
 
 # ----------------------------
 # DATABASE SETUP
@@ -12,6 +13,7 @@ Base = declarative_base()
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True)
+    user_id = Column(String)       # NEW: track user-specific data
     type = Column(String)
     category = Column(String)
     amount = Column(Float)
@@ -22,16 +24,24 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
 
+# ----------------------------
+# USER SESSION ID
+# ----------------------------
+if "user_id" not in st.session_state:
+    st.session_state.user_id = str(uuid.uuid4())
+
+# ----------------------------
+# APP SETUP
+# ----------------------------
 st.set_page_config(page_title="Smart Finance Tracker", page_icon="💰", layout="centered")
 st.title("💼 Smart Finance Tracker")
-st.caption("Track your income, expenses, and manage your finances effortlessly.")
+st.caption("Track your income, expenses, and manage your finances privately.")
 
 # ----------------------------
 # ADD TRANSACTION FORM
 # ----------------------------
 st.subheader("➕ Add New Transaction")
 
-# Predefined categories
 credit_categories = [
     "Salary", "Freelance Income", "Investment Return",
     "Gift Received", "Cashback / Refund", "Other Credit"
@@ -44,7 +54,6 @@ expense_categories = [
 
 txn_type = st.radio("Select Transaction Type", ["Credit", "Expense"], horizontal=True)
 
-# Show dropdown dynamically
 if txn_type == "Credit":
     category = st.selectbox("Select Credit Category", credit_categories)
 else:
@@ -58,6 +67,7 @@ if st.button("Add Transaction"):
         st.warning("Please enter a valid amount.")
     else:
         new_txn = Transaction(
+            user_id=st.session_state.user_id,
             type=txn_type,
             category=category,
             amount=amount,
@@ -71,8 +81,9 @@ if st.button("Add Transaction"):
 # ----------------------------
 # DISPLAY TRANSACTIONS
 # ----------------------------
-st.subheader("📊 Transaction History")
-transactions = session.query(Transaction).all()
+st.subheader("📊 Your Transaction History")
+
+transactions = session.query(Transaction).filter_by(user_id=st.session_state.user_id).all()
 
 if transactions:
     df = pd.DataFrame(
@@ -112,11 +123,12 @@ else:
 # ----------------------------
 # RESET ALL TRANSACTIONS
 # ----------------------------
-st.subheader("⚠️ Reset All Transactions")
-confirm_reset = st.checkbox("I want to delete ALL transactions")
+st.subheader("⚠️ Reset All Your Transactions")
+confirm_reset = st.checkbox("I want to delete ALL my transactions")
+
 if confirm_reset:
     if st.button("Reset All Transactions"):
-        session.query(Transaction).delete()
+        session.query(Transaction).filter_by(user_id=st.session_state.user_id).delete()
         session.commit()
-        st.success("All transactions cleared successfully!")
+        st.success("All your transactions cleared successfully!")
         st.rerun()
