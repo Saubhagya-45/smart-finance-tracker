@@ -6,18 +6,27 @@ from database import add_transaction, get_all_transactions
 st.set_page_config(page_title="Smart Finance Tracker", layout="wide")
 st.title("💰 Smart Finance Tracker")
 
+# --- Predefined Categories ---
+income_categories = ["Salary", "Business", "Investment", "Other"]
+expense_categories = ["Food", "Rent", "Travel", "Entertainment", "Shopping", "Bills", "Other"]
+
 # --- Add Transaction Form ---
 st.subheader("Add Transaction")
 with st.form(key='txn_form'):
     txn_type = st.selectbox("Type", ["Income", "Expense"])
-    category = st.text_input("Category")
+    
+    if txn_type == "Income":
+        category = st.selectbox("Category", income_categories)
+    else:
+        category = st.selectbox("Category", expense_categories)
+    
     amount = st.number_input("Amount", min_value=0.0, step=0.01)
     note = st.text_input("Note (optional)")
     submit = st.form_submit_button("Add Transaction")
     
     if submit:
         add_transaction(txn_type, category, amount, note)
-        st.success("Transaction added!")
+        st.success(f"{txn_type} transaction added!")
 
 # --- Load Data ---
 data = get_all_transactions()
