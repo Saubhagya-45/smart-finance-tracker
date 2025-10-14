@@ -23,7 +23,7 @@ if st.sidebar.button("Clear All Transactions"):
 st.sidebar.subheader("Filter Transactions")
 filter_type = st.sidebar.selectbox("Type", ["All", "Credit", "Expense"])
 filter_category = st.sidebar.selectbox("Category", ["All"] + credit_categories + expense_categories)
-filter_month = st.sidebar.selectbox("Month", ["All"])
+# Month filter will be updated dynamically later
 
 # --- Add Transaction Form ---
 st.subheader("Add Transaction")
@@ -37,17 +37,15 @@ with st.form(key='txn_form'):
     amount = st.number_input("Amount", min_value=0.0, step=0.01)
     note = st.text_input("Note (optional)")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        submit = st.form_submit_button("Add Transaction")
-    with col2:
-        reset = st.form_submit_button("Clear Form")
+    submit = st.form_submit_button("Add Transaction")
     
     if submit:
         add_transaction(txn_type, category, amount, note)
         st.success(f"{txn_type} transaction added!")
-    if reset:
-        st.experimental_rerun()  # Clears the form inputs
+
+# --- Reset Form Button Outside Form ---
+if st.button("Reset Form"):
+    st.experimental_rerun()  # Safely clears the form inputs
 
 # --- Load Data ---
 data = get_all_transactions()
@@ -64,9 +62,11 @@ else:
 # Add Month column for filtering
 if not df.empty:
     df["Month"] = df["Date"].dt.to_period("M").astype(str)
-    # Update month filter options dynamically
+    # Update month filter dynamically
     months = ["All"] + sorted(df["Month"].unique().tolist())
     filter_month = st.sidebar.selectbox("Month", months)
+else:
+    filter_month = "All"
 
 # --- Apply Filters ---
 filtered_df = df.copy()
