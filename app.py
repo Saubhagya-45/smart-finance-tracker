@@ -92,15 +92,25 @@ with st.form(key="txn_form"):
         st.session_state.amount = 0.0
         st.session_state.note = ""
 
-# --- Reset All Transactions with Checkbox Confirmation ---
+# --- Reset All Transactions with Safe Confirmation ---
 st.subheader("⚠️ Reset All Transactions")
 confirm_reset = st.checkbox("I want to delete ALL transactions")
 if confirm_reset:
     if st.button("Reset All Transactions"):
+        # Delete all transactions from the database
         session.query(Transaction).delete()
         session.commit()
         st.success("All transactions have been cleared!")
-        st.experimental_rerun()
+
+        # Reset session state for form fields
+        st.session_state.txn_type = "Credit"
+        st.session_state.category = credit_categories[0]
+        st.session_state.amount = 0.0
+        st.session_state.note = ""
+
+        # Clear the dataframe so table and charts update
+        df = pd.DataFrame(columns=["Type","Category","Amount","Date"])
+        filtered_df = df.copy()
 
 # --- Summary Cards ---
 total_credit = filtered_df[filtered_df["Type"]=="Credit"]["Amount"].sum()
