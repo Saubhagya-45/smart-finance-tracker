@@ -7,16 +7,24 @@ import uuid
 # ----------------------------
 # SUPABASE SETUP
 # ----------------------------
-SUPABASE_URL = "https://zsgnsdsnaryzzquhthng.supabase.co"  # Replace with your project URL
+SUPABASE_URL = "https://zsgnsdsnaryzzquhthng.supabase.co"  # Replace with your Supabase URL
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzZ25zZHNuYXJ5enpxdWh0aG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTE1MTgsImV4cCI6MjA3NTkyNzUxOH0.B5C2P7z_oU6DAl6N3CVnp2JvewNXe5puse6gtT5for0"                   # Replace with your anon/public key
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+try:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    supabase_connected = True
+except Exception:
+    supabase_connected = False
 
 # ----------------------------
 # USER SESSION ID
 # ----------------------------
 if "user_id" not in st.session_state:
     st.session_state.user_id = str(uuid.uuid4())
+
+# Fallback local storage if Supabase not connected
+if "local_transactions" not in st.session_state:
+    st.session_state.local_transactions = []
 
 # ----------------------------
 # APP SETUP
@@ -54,24 +62,43 @@ if st.button("Add Transaction"):
     if amount <= 0:
         st.warning("Please enter a valid amount.")
     else:
-        supabase.table("transactions").insert({
+        transaction = {
             "user_id": st.session_state.user_id,
             "type": txn_type,
             "category": category,
             "amount": amount,
             "note": note
-        }).execute()
+        }
+
+        if supabase_connected:
+            try:
+                supabase.table("transactions").insert(transaction).execute()
+            except Exception:
+                supabase_connected = False
+                st.warning("Supabase connection failed. Saving locally instead.")
+                st.session_state.local_transactions.append(transaction)
+        else:
+            st.session_state.local_transactions.append(transaction)
+
         st.success(f"{'💰' if txn_type == 'Credit' else '💸'} {txn_type} of ₹{amount:.2f} added under '{category}'!")
         st.rerun()
 
 # ----------------------------
-# DISPLAY TRANSACTIONS
+# FETCH TRANSACTIONS
 # ----------------------------
 st.subheader("📊 Your Transaction History")
 
-# Fetch transactions for current user
-response = supabase.table("transactions").select("*").eq("user_id", st.session_state.user_id).execute()
-transactions = response.data  # List of dicts
+transactions = []
+if supabase_connected:
+    try:
+        response = supabase.table("transactions").select("*").eq("user_id", st.session_state.user_id).execute()
+        transactions = response.data
+    except Exception:
+        supabase_connected = False
+        st.warning("Supabase connection failed. Showing local session data.")
+        transactions = st.session_state.local_transactions
+else:
+    transactions = st.session_state.local_transactions
 
 if transactions:
     df = pd.DataFrame(transactions)
@@ -94,15 +121,12 @@ if transactions:
     if selected_category != "All":
         df = df[df["category"] == selected_category]
 
-    # Color rows based on type
-    def color_transactions(row):
-        if row['type'] == "Credit":
-            return ['background-color: #d4edda']*len(row)  # green
-        else:
-            return ['background-color: #f8d7da']*len(row)  # red
+    # Color only text based on type
+    def color_text(row):
+        return ['color: green' if row['type']=="Credit" else 'color: red' for _ in row]
 
     st.dataframe(
-        df[["type", "category", "amount", "note"]].style.apply(color_transactions, axis=1),
+        df[["type", "category", "amount", "note"]].style.apply(color_text, axis=1),
         use_container_width=True
     )
 
@@ -124,6 +148,13 @@ confirm_reset = st.checkbox("I want to delete ALL my transactions")
 
 if confirm_reset:
     if st.button("Reset All Transactions"):
-        supabase.table("transactions").delete().eq("user_id", st.session_state.user_id).execute()
+        if supabase_connected:
+            try:
+                supabase.table("transactions").delete().eq("user_id", st.session_state.user_id).execute()
+            except Exception:
+                st.warning("Supabase reset failed. Clearing local data instead.")
+                st.session_state.local_transactions = []
+        else:
+            st.session_state.local_transactions = []
         st.success("All your transactions cleared successfully!")
         st.rerun()
