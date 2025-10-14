@@ -15,10 +15,11 @@ st.subheader("Add Transaction")
 with st.form(key='txn_form'):
     txn_type = st.selectbox("Type", ["Income", "Expense"])
     
+    # Separate dropdowns for Income and Expense
     if txn_type == "Income":
-        category = st.selectbox("Category", income_categories)
+        category = st.selectbox("Income Category", income_categories)
     else:
-        category = st.selectbox("Category", expense_categories)
+        category = st.selectbox("Expense Category", expense_categories)
     
     amount = st.number_input("Amount", min_value=0.0, step=0.01)
     note = st.text_input("Note (optional)")
@@ -65,7 +66,8 @@ if not expense_df.empty:
 
 st.subheader("Monthly Summary")
 if not df.empty:
-    df["Month"] = pd.to_datetime(df["Date"]).dt.to_period("M")
+    # FIX: Convert Period to string for Plotly
+    df["Month"] = pd.to_datetime(df["Date"]).dt.to_period("M").astype(str)
     monthly = df.groupby(["Month","Type"])["Amount"].sum().reset_index()
     fig2 = px.bar(monthly, x="Month", y="Amount", color="Type", barmode="group", title="Monthly Income vs Expense")
     st.plotly_chart(fig2, use_container_width=True)
