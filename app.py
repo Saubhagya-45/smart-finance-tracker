@@ -92,10 +92,11 @@ with st.form(key="txn_form"):
         st.session_state.amount = 0.0
         st.session_state.note = ""
 
-# --- Reset All Transactions Button ---
+# --- Reset All Transactions with Checkbox Confirmation ---
 st.subheader("⚠️ Reset All Transactions")
-if st.button("Reset All Transactions"):
-    if st.confirm("Are you sure you want to delete ALL transactions?"):
+confirm_reset = st.checkbox("I want to delete ALL transactions")
+if confirm_reset:
+    if st.button("Reset All Transactions"):
         session.query(Transaction).delete()
         session.commit()
         st.success("All transactions have been cleared!")
