@@ -7,17 +7,17 @@ st.set_page_config(page_title="Smart Finance Tracker", layout="wide")
 st.title("💰 Smart Finance Tracker")
 
 # --- Predefined Categories ---
-income_categories = ["Salary", "Business", "Investment", "Other"]
+credit_categories = ["Salary", "Credit"]  # Added one more category
 expense_categories = ["Food", "Rent", "Travel", "Entertainment", "Shopping", "Bills", "Other"]
 
 # --- Add Transaction Form ---
 st.subheader("Add Transaction")
 with st.form(key='txn_form'):
-    txn_type = st.selectbox("Type", ["Income", "Expense"])
+    txn_type = st.selectbox("Type", ["Credit", "Expense"])
     
-    # Separate dropdowns for Income and Expense
-    if txn_type == "Income":
-        category = st.selectbox("Income Category", income_categories)
+    # Separate dropdowns for Credit and Expense
+    if txn_type == "Credit":
+        category = st.selectbox("Credit Category", credit_categories)
     else:
         category = st.selectbox("Expense Category", expense_categories)
     
@@ -43,13 +43,13 @@ else:
     df = pd.DataFrame(columns=["Type","Category","Amount","Date","Note"])
 
 # --- Summary Cards ---
-total_income = df[df["Type"]=="Income"]["Amount"].sum()
+total_credit = df[df["Type"]=="Credit"]["Amount"].sum()
 total_expense = df[df["Type"]=="Expense"]["Amount"].sum()
-savings = total_income - total_expense
+savings = total_credit - total_expense
 
 st.subheader("💡 Summary")
 col1, col2, col3 = st.columns(3)
-col1.metric("Total Income", f"₹ {total_income:,.2f}")
+col1.metric("Total Credit", f"₹ {total_credit:,.2f}")
 col2.metric("Total Expense", f"₹ {total_expense:,.2f}")
 col3.metric("Savings", f"₹ {savings:,.2f}")
 
@@ -69,5 +69,5 @@ if not df.empty:
     # FIX: Convert Period to string for Plotly
     df["Month"] = pd.to_datetime(df["Date"]).dt.to_period("M").astype(str)
     monthly = df.groupby(["Month","Type"])["Amount"].sum().reset_index()
-    fig2 = px.bar(monthly, x="Month", y="Amount", color="Type", barmode="group", title="Monthly Income vs Expense")
+    fig2 = px.bar(monthly, x="Month", y="Amount", color="Type", barmode="group", title="Monthly Credit vs Expense")
     st.plotly_chart(fig2, use_container_width=True)
