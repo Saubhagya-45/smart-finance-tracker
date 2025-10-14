@@ -4,6 +4,7 @@ import plotly.express as px
 from sqlalchemy import create_engine, Column, Integer, String, Float
 from sqlalchemy.orm import declarative_base, sessionmaker
 import uuid
+import os
 
 # ----------------------------
 # DATABASE SETUP
@@ -13,13 +14,15 @@ Base = declarative_base()
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(Integer, primary_key=True)
-    user_id = Column(String)       # NEW: track user-specific data
+    user_id = Column(String)       # track user-specific data
     type = Column(String)
     category = Column(String)
     amount = Column(Float)
     note = Column(String)
 
-engine = create_engine("sqlite:///finance_tracker.db")
+# Use /tmp for writable DB on Streamlit Cloud
+db_path = os.path.join("/tmp", "finance_tracker.db")
+engine = create_engine(f"sqlite:///{db_path}")
 Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine)
 session = Session()
