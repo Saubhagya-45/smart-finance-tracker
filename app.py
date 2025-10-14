@@ -12,8 +12,6 @@ expense_categories = ["Food", "Rent", "Travel", "Entertainment", "Shopping", "Bi
 
 # --- Sidebar Options ---
 st.sidebar.subheader("Options")
-
-# Clear all transactions
 if st.sidebar.button("Clear All Transactions"):
     session.query(Transaction).delete()
     session.commit()
@@ -23,29 +21,6 @@ if st.sidebar.button("Clear All Transactions"):
 st.sidebar.subheader("Filter Transactions")
 filter_type = st.sidebar.selectbox("Type", ["All", "Credit", "Expense"])
 filter_category = st.sidebar.selectbox("Category", ["All"] + credit_categories + expense_categories)
-# Month filter will be updated dynamically later
-
-# --- Add Transaction Form ---
-st.subheader("Add Transaction")
-with st.form(key='txn_form'):
-    txn_type = st.selectbox("Type", ["Credit", "Expense"])
-    if txn_type == "Credit":
-        category = st.selectbox("Credit Category", credit_categories)
-    else:
-        category = st.selectbox("Expense Category", expense_categories)
-    
-    amount = st.number_input("Amount", min_value=0.0, step=0.01)
-    note = st.text_input("Note (optional)")
-    
-    submit = st.form_submit_button("Add Transaction")
-    
-    if submit:
-        add_transaction(txn_type, category, amount, note)
-        st.success(f"{txn_type} transaction added!")
-
-# --- Reset Form Button Outside Form ---
-if st.button("Reset Form"):
-    st.experimental_rerun()  # Safely clears the form inputs
 
 # --- Load Data ---
 data = get_all_transactions()
@@ -62,7 +37,6 @@ else:
 # Add Month column for filtering
 if not df.empty:
     df["Month"] = df["Date"].dt.to_period("M").astype(str)
-    # Update month filter dynamically
     months = ["All"] + sorted(df["Month"].unique().tolist())
     filter_month = st.sidebar.selectbox("Month", months)
 else:
@@ -76,6 +50,55 @@ if filter_category != "All":
     filtered_df = filtered_df[filtered_df["Category"] == filter_category]
 if filter_month != "All":
     filtered_df = filtered_df[filtered_df["Month"] == filter_month]
+
+# --- Initialize session state for form fields ---
+if "txn_type" not in st.session_state:
+    st.session_state.txn_type = "Credit"
+if "category" not in st.session_state:
+    st.session_state.category = credit_categories[0]
+if "amount" not in st.session_state:
+    st.session_state.amount = 0.0
+if "note" not in st.session_state:
+    st.session_state.note = ""
+
+# --- Add Transaction Form ---
+st.subheader("Add Transaction")
+with st.form(key="txn_form"):
+    st.session_state.txn_type = st.selectbox(
+        "Type", ["Credit", "Expense"], index=["Credit","Expense"].index(st.session_state.txn_type)
+    )
+    
+    if st.session_state.txn_type == "Credit":
+        st.session_state.category = st.selectbox(
+            "Credit Category", credit_categories, index=credit_categories.index(st.session_state.category) if st.session_state.category in credit_categories else 0
+        )
+    else:
+        st.session_state.category = st.selectbox(
+            "Expense Category", expense_categories, index=expense_categories.index(st.session_state.category) if st.session_state.category in expense_categories else 0
+        )
+    
+    st.session_state.amount = st.number_input("Amount", min_value=0.0, step=0.01, value=st.session_state.amount)
+    st.session_state.note = st.text_input("Note (optional)", value=st.session_state.note)
+    
+    submitted = st.form_submit_button("Add Transaction")
+    reset = st.form_submit_button("Reset Form")
+
+    if submitted:
+        add_transaction(
+            st.session_state.txn_type,
+            st.session_state.category,
+            st.session_state.amount,
+            st.session_state.note
+        )
+        st.success(f"{st.session_state.txn_type} transaction added!")
+        # Reset amount and note only
+        st.session_state.amount = 0.0
+        st.session_state.note = ""
+    if reset:
+        st.session_state.txn_type = "Credit"
+        st.session_state.category = credit_categories[0]
+        st.session_state.amount = 0.0
+        st.session_state.note = ""
 
 # --- Summary Cards ---
 total_credit = filtered_df[filtered_df["Type"]=="Credit"]["Amount"].sum()
@@ -92,7 +115,7 @@ col3.metric("Savings", f"₹ {savings:,.2f}")
 st.subheader("All Transactions")
 st.dataframe(filtered_df)
 
-# --- Download Button ---
+# --- Download CSV ---
 if not filtered_df.empty:
     csv = filtered_df.to_csv(index=False).encode('utf-8')
     st.download_button(
