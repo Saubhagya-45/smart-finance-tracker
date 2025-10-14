@@ -23,7 +23,6 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 st.set_page_config(page_title="Smart Finance Tracker", page_icon="💰", layout="centered")
-
 st.title("💼 Smart Finance Tracker")
 st.caption("Track your income, expenses, and manage your finances effortlessly.")
 
@@ -32,44 +31,24 @@ st.caption("Track your income, expenses, and manage your finances effortlessly."
 # ----------------------------
 st.subheader("➕ Add New Transaction")
 
-# Initialize session state categories
-if "credit_categories" not in st.session_state:
-    st.session_state.credit_categories = [
-        "Salary", "Freelance Income", "Investment Return",
-        "Gift Received", "Cashback / Refund", "Other Credit"
-    ]
-if "expense_categories" not in st.session_state:
-    st.session_state.expense_categories = [
-        "Food & Dining", "Rent / Accommodation", "Travel / Commute",
-        "Entertainment / Subscriptions", "Shopping", "Bills & Utilities",
-        "Health / Fitness", "Education", "Other Expense"
-    ]
+# Predefined categories
+credit_categories = [
+    "Salary", "Freelance Income", "Investment Return",
+    "Gift Received", "Cashback / Refund", "Other Credit"
+]
+expense_categories = [
+    "Food & Dining", "Rent / Accommodation", "Travel / Commute",
+    "Entertainment / Subscriptions", "Shopping", "Bills & Utilities",
+    "Health / Fitness", "Education", "Other Expense"
+]
 
 txn_type = st.radio("Select Transaction Type", ["Credit", "Expense"], horizontal=True)
 
 # Show dropdown dynamically
 if txn_type == "Credit":
-    category = st.selectbox("Select Credit Category", st.session_state.credit_categories)
-    new_cat = st.text_input("➕ Add New Credit Category (optional)")
-    if st.button("Add Credit Category"):
-        if new_cat and new_cat not in st.session_state.credit_categories:
-            st.session_state.credit_categories.append(new_cat)
-            st.success(f"'{new_cat}' added to Credit categories!")
-        elif new_cat in st.session_state.credit_categories:
-            st.info("That category already exists.")
-        else:
-            st.warning("Please enter a category name.")
+    category = st.selectbox("Select Credit Category", credit_categories)
 else:
-    category = st.selectbox("Select Expense Category", st.session_state.expense_categories)
-    new_cat = st.text_input("➕ Add New Expense Category (optional)")
-    if st.button("Add Expense Category"):
-        if new_cat and new_cat not in st.session_state.expense_categories:
-            st.session_state.expense_categories.append(new_cat)
-            st.success(f"'{new_cat}' added to Expense categories!")
-        elif new_cat in st.session_state.expense_categories:
-            st.info("That category already exists.")
-        else:
-            st.warning("Please enter a category name.")
+    category = st.selectbox("Select Expense Category", expense_categories)
 
 amount = st.number_input("Enter Amount (₹)", min_value=0.0, step=100.0)
 note = st.text_input("Note (optional)")
@@ -93,8 +72,8 @@ if st.button("Add Transaction"):
 # DISPLAY TRANSACTIONS
 # ----------------------------
 st.subheader("📊 Transaction History")
-
 transactions = session.query(Transaction).all()
+
 if transactions:
     df = pd.DataFrame(
         [(t.id, t.type, t.category, t.amount, t.note) for t in transactions],
@@ -116,7 +95,6 @@ if transactions:
         "Filter by Category",
         ["All"] + sorted(df["Category"].unique().tolist())
     )
-
     if selected_category != "All":
         df = df[df["Category"] == selected_category]
 
@@ -126,10 +104,7 @@ if transactions:
     fig1 = px.bar(df, x="Category", y="Amount", color="Type", barmode="group", title="Category-wise Breakdown")
     st.plotly_chart(fig1, use_container_width=True)
 
-    fig2 = px.pie(
-        df, names="Type", values="Amount",
-        title="Income vs Expense", color_discrete_sequence=px.colors.qualitative.Pastel
-    )
+    fig2 = px.pie(df, names="Type", values="Amount", title="Income vs Expense", color_discrete_sequence=px.colors.qualitative.Pastel)
     st.plotly_chart(fig2, use_container_width=True)
 else:
     st.info("No transactions added yet.")
@@ -139,7 +114,6 @@ else:
 # ----------------------------
 st.subheader("⚠️ Reset All Transactions")
 confirm_reset = st.checkbox("I want to delete ALL transactions")
-
 if confirm_reset:
     if st.button("Reset All Transactions"):
         session.query(Transaction).delete()
