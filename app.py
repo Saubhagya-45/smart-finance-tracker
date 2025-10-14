@@ -1,160 +1,162 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from database import add_transaction, get_all_transactions, session, Transaction
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
 
-st.set_page_config(page_title="Smart Finance Tracker", layout="wide")
-st.title("💰 Smart Finance Tracker")
+# --- Database Setup ---
+engine = create_engine("sqlite:///finance.db")
+Base = declarative_base()
 
-# --- Predefined Categories ---
-credit_categories = ["Salary", "Credit"]
-expense_categories = ["Food", "Rent", "Travel", "Entertainment", "Shopping", "Bills", "Other"]
+class Transaction(Base):
+    __tablename__ = "transactions"
+    id = Column(Integer, primary_key=True)
+    type = Column(String)
+    category = Column(String)
+    amount = Column(Float)
+    note = Column(String)
+    date = Column(DateTime, default=datetime.now)
 
-# --- Sidebar Filters ---
-st.sidebar.subheader("Filter Transactions")
-filter_type = st.sidebar.selectbox("Type", ["All", "Credit", "Expense"])
-filter_category = st.sidebar.selectbox("Category", ["All"] + credit_categories + expense_categories)
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+session = Session()
 
-# --- Load Data ---
-data = get_all_transactions()
-if data:
-    df = pd.DataFrame([{
-        "Type": t.type,
-        "Category": t.category,
-        "Amount": t.amount,
-        "Date": pd.to_datetime(t.date)
-    } for t in data])
-else:
-    df = pd.DataFrame(columns=["Type","Category","Amount","Date"])
-
-# Add Month column for filtering
-if not df.empty:
-    df["Month"] = df["Date"].dt.to_period("M").astype(str)
-    months = ["All"] + sorted(df["Month"].unique().tolist())
-    filter_month = st.sidebar.selectbox("Month", months)
-else:
-    filter_month = "All"
-
-# --- Apply Filters ---
-filtered_df = df.copy()
-if filter_type != "All":
-    filtered_df = filtered_df[filtered_df["Type"] == filter_type]
-if filter_category != "All":
-    filtered_df = filtered_df[filtered_df["Category"] == filter_category]
-if filter_month != "All":
-    filtered_df = filtered_df[filtered_df["Month"] == filter_month]
-
-# --- Initialize session state for form fields ---
-if "txn_type" not in st.session_state:
-    st.session_state.txn_type = "Credit"
-if "category" not in st.session_state:
-    st.session_state.category = credit_categories[0]
-if "amount" not in st.session_state:
-    st.session_state.amount = 0.0
-if "note" not in st.session_state:
-    st.session_state.note = ""
+# --- Streamlit Config ---
+st.set_page_config(
+    page_title="Smart Finance Tracker",
+    page_icon="💰",
+    layout="wide"
+)
+st.title("💸 Smart Finance Tracker")
+st.caption("Track your income, expenses, and savings in one place — effortlessly!")
 
 # --- Add Transaction Form ---
-st.subheader("Add Transaction")
-with st.form(key="txn_form"):
-    st.session_state.txn_type = st.selectbox(
-        "Type", ["Credit", "Expense"], index=["Credit","Expense"].index(st.session_state.txn_type)
-    )
-    
-    if st.session_state.txn_type == "Credit":
-        st.session_state.category = st.selectbox(
-            "Credit Category", credit_categories, index=credit_categories.index(st.session_state.category) if st.session_state.category in credit_categories else 0
-        )
+st.subheader("➕ Add New Transaction")
+with st.form("add_transaction_form"):
+    txn_type = st.selectbox("Select Transaction Type", ["Credit 💰", "Expense 💸"])
+
+    if "Credit" in txn_type:
+        category = st.selectbox("Select Credit Category", ["Salary", "Credit"])
+        icon = "💰"
+        color = "green"
+        txn_type_clean = "Credit"
     else:
-        st.session_state.category = st.selectbox(
-            "Expense Category", expense_categories, index=expense_categories.index(st.session_state.category) if st.session_state.category in expense_categories else 0
+        category = st.selectbox(
+            "Select Expense Category",
+            ["Food", "Rent", "Travel", "Entertainment", "Shopping", "Bills", "Other"]
         )
-    
-    st.session_state.amount = st.number_input("Amount", min_value=0.0, step=0.01, value=st.session_state.amount)
-    st.session_state.note = st.text_input("Note (optional)", value=st.session_state.note)
-    
+        icon = "💸"
+        color = "red"
+        txn_type_clean = "Expense"
+
+    amount = st.number_input("Enter Amount (₹)", min_value=0.0, step=100.0)
+    note = st.text_input("Note (optional)")
+
     submitted = st.form_submit_button("Add Transaction")
-    reset = st.form_submit_button("Reset Form")
-
     if submitted:
-        add_transaction(
-            st.session_state.txn_type,
-            st.session_state.category,
-            st.session_state.amount,
-            st.session_state.note
-        )
-        st.success(f"{st.session_state.txn_type} transaction added!")
-        st.session_state.amount = 0.0
-        st.session_state.note = ""
-    if reset:
-        st.session_state.txn_type = "Credit"
-        st.session_state.category = credit_categories[0]
-        st.session_state.amount = 0.0
-        st.session_state.note = ""
+        if amount <= 0:
+            st.warning("Please enter a valid amount.")
+        else:
+            new_txn = Transaction(
+                type=txn_type_clean,
+                category=category,
+                amount=amount,
+                note=note
+            )
+            session.add(new_txn)
+            session.commit()
+            st.success(f"{icon} {txn_type_clean} of ₹{amount:.2f} added under '{category}'!")
 
-# --- Reset All Transactions with Safe Confirmation ---
+# --- Reset Form Button ---
+if st.button("🧹 Reset Form"):
+    st.session_state.clear()
+    st.success("Form cleared!")
+
+# --- Reset All Transactions ---
 st.subheader("⚠️ Reset All Transactions")
 confirm_reset = st.checkbox("I want to delete ALL transactions")
 if confirm_reset:
     if st.button("Reset All Transactions"):
-        # Delete all transactions from the database
         session.query(Transaction).delete()
         session.commit()
         st.success("All transactions have been cleared!")
+        df = pd.DataFrame(columns=["Type", "Category", "Amount", "Date"])
+    else:
+        df = pd.read_sql("SELECT * FROM transactions", engine)
+else:
+    df = pd.read_sql("SELECT * FROM transactions", engine)
 
-        # Reset session state for form fields
-        st.session_state.txn_type = "Credit"
-        st.session_state.category = credit_categories[0]
-        st.session_state.amount = 0.0
-        st.session_state.note = ""
+# --- Sidebar Filters ---
+st.sidebar.header("🔍 Filters")
+filter_type = st.sidebar.selectbox("Type", ["All", "Credit", "Expense"])
+filter_category = st.sidebar.selectbox(
+    "Category", ["All"] + list(df["Category"].unique()) if not df.empty else ["All"]
+)
+filter_month = st.sidebar.selectbox(
+    "Month", ["All"] + [datetime.strptime(str(d), "%Y-%m-%d %H:%M:%S").strftime("%B") for d in df["Date"]] if not df.empty else ["All"]
+)
 
-        # Clear the dataframe so table and charts update
-        df = pd.DataFrame(columns=["Type","Category","Amount","Date"])
-        filtered_df = df.copy()
+# --- Apply Filters ---
+if not df.empty:
+    df["Month"] = df["Date"].apply(lambda x: datetime.strptime(str(x), "%Y-%m-%d %H:%M:%S").strftime("%B"))
+    if filter_type != "All":
+        df = df[df["Type"] == filter_type]
+    if filter_category != "All":
+        df = df[df["Category"] == filter_category]
+    if filter_month != "All":
+        df = df[df["Month"] == filter_month]
 
-# --- Summary Cards ---
-total_credit = filtered_df[filtered_df["Type"]=="Credit"]["Amount"].sum()
-total_expense = filtered_df[filtered_df["Type"]=="Expense"]["Amount"].sum()
-savings = total_credit - total_expense
+# --- Summary Section ---
+if not df.empty:
+    total_credit = df[df["Type"] == "Credit"]["Amount"].sum()
+    total_expense = df[df["Type"] == "Expense"]["Amount"].sum()
+    savings = total_credit - total_expense
 
-st.subheader("💡 Summary")
-col1, col2, col3 = st.columns(3)
-col1.metric("Total Credit", f"₹ {total_credit:,.2f}")
-col2.metric("Total Expense", f"₹ {total_expense:,.2f}")
-col3.metric("Savings", f"₹ {savings:,.2f}")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("💰 Total Credit", f"₹{total_credit:,.2f}", delta_color="off")
+    col2.metric("💸 Total Expense", f"₹{total_expense:,.2f}", delta_color="off")
+    col3.metric("💼 Net Savings", f"₹{savings:,.2f}", delta_color="off")
 
-# --- Display Transactions ---
-st.subheader("All Transactions")
-st.dataframe(filtered_df)
+    st.divider()
 
-# --- Download CSV ---
-if not filtered_df.empty:
-    csv = filtered_df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="Download Transactions CSV",
-        data=csv,
-        file_name='transactions.csv',
-        mime='text/csv'
-    )
+    # --- Transaction Table ---
+    st.subheader("📋 Transactions")
+    st.dataframe(df[["Type", "Category", "Amount", "Date", "Note"]])
 
-# --- Charts ---
-st.subheader("Expenses by Category")
-expense_df = filtered_df[filtered_df["Type"]=="Expense"]
-if not expense_df.empty:
-    fig1 = px.pie(expense_df, values="Amount", names="Category", title="Expenses by Category")
-    st.plotly_chart(fig1, use_container_width=True)
+    # --- Charts ---
+    col1, col2 = st.columns(2)
 
-st.subheader("Monthly Summary")
-if not filtered_df.empty:
-    monthly = filtered_df.groupby(["Month","Type"])["Amount"].sum().reset_index()
-    fig2 = px.bar(monthly, x="Month", y="Amount", color="Type", barmode="group", title="Monthly Credit vs Expense")
-    st.plotly_chart(fig2, use_container_width=True)
+    with col1:
+        exp_df = df[df["Type"] == "Expense"]
+        if not exp_df.empty:
+            fig = px.pie(exp_df, names="Category", values="Amount", title="Expense Breakdown by Category")
+            st.plotly_chart(fig, use_container_width=True)
 
-st.subheader("Cumulative Savings Over Time")
-if not filtered_df.empty:
-    filtered_df = filtered_df.sort_values("Date")
-    filtered_df["Credit"] = filtered_df["Amount"].where(filtered_df["Type"]=="Credit", 0)
-    filtered_df["Expense"] = filtered_df["Amount"].where(filtered_df["Type"]=="Expense", 0)
-    filtered_df["Cumulative Savings"] = (filtered_df["Credit"].cumsum() - filtered_df["Expense"].cumsum())
-    fig3 = px.line(filtered_df, x="Date", y="Cumulative Savings", title="Cumulative Savings Over Time")
+    with col2:
+        monthly_df = df.copy()
+        monthly_df["Month"] = monthly_df["Date"].apply(lambda x: datetime.strptime(str(x), "%Y-%m-%d %H:%M:%S").strftime("%b"))
+        if not monthly_df.empty:
+            fig2 = px.bar(
+                monthly_df,
+                x="Month",
+                y="Amount",
+                color="Type",
+                barmode="group",
+                title="Monthly Credit vs Expense"
+            )
+            st.plotly_chart(fig2, use_container_width=True)
+
+    # --- Savings Trend ---
+    df_sorted = df.sort_values("Date")
+    df_sorted["Savings"] = df_sorted.apply(
+        lambda row: row["Amount"] if row["Type"] == "Credit" else -row["Amount"], axis=1
+    ).cumsum()
+
+    st.subheader("📈 Savings Over Time")
+    fig3 = px.line(df_sorted, x="Date", y="Savings", title="Cumulative Savings Trend")
     st.plotly_chart(fig3, use_container_width=True)
+
+else:
+    st.info("No transactions yet. Start by adding a Credit or Expense above!")
