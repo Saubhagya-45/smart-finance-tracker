@@ -32,6 +32,17 @@ if data:
 else:
     df = pd.DataFrame(columns=["Type","Category","Amount","Date","Note"])
 
+# --- Summary Cards ---
+total_income = df[df["Type"]=="Income"]["Amount"].sum()
+total_expense = df[df["Type"]=="Expense"]["Amount"].sum()
+savings = total_income - total_expense
+
+st.subheader("💡 Summary")
+col1, col2, col3 = st.columns(3)
+col1.metric("Total Income", f"₹ {total_income:,.2f}")
+col2.metric("Total Expense", f"₹ {total_expense:,.2f}")
+col3.metric("Savings", f"₹ {savings:,.2f}")
+
 # --- Display Transactions ---
 st.subheader("All Transactions")
 st.dataframe(df)
@@ -40,12 +51,12 @@ st.dataframe(df)
 st.subheader("Expenses by Category")
 expense_df = df[df["Type"]=="Expense"]
 if not expense_df.empty:
-    fig1 = px.pie(expense_df, values="Amount", names="Category")
+    fig1 = px.pie(expense_df, values="Amount", names="Category", title="Expenses by Category")
     st.plotly_chart(fig1, use_container_width=True)
 
 st.subheader("Monthly Summary")
 if not df.empty:
     df["Month"] = pd.to_datetime(df["Date"]).dt.to_period("M")
     monthly = df.groupby(["Month","Type"])["Amount"].sum().reset_index()
-    fig2 = px.bar(monthly, x="Month", y="Amount", color="Type", barmode="group")
+    fig2 = px.bar(monthly, x="Month", y="Amount", color="Type", barmode="group", title="Monthly Income vs Expense")
     st.plotly_chart(fig2, use_container_width=True)
