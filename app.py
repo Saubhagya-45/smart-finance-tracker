@@ -1,8 +1,8 @@
 from supabase import create_client
 
 # Replace these with your Supabase project details
-SUPABASE_URL = "https://xyzcompany.supabase.co"
-SUPABASE_KEY = "YOUR_ANON_KEY"
+SUPABASE_URL = "https://zsgnsdsnaryzzquhthng.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzZ25zZHNuYXJ5enpxdWh0aG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTE1MTgsImV4cCI6MjA3NTkyNzUxOH0.B5C2P7z_oU6DAl6N3CVnp2JvewNXe5puse6gtT5for0"
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
