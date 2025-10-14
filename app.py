@@ -1,3 +1,11 @@
+from supabase import create_client
+
+# Replace these with your Supabase project details
+SUPABASE_URL = "https://xyzcompany.supabase.co"
+SUPABASE_KEY = "YOUR_ANON_KEY"
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
