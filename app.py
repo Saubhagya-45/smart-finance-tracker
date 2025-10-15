@@ -82,7 +82,19 @@ except Exception as e:
     st.error(f"Error fetching transactions: {e}")
     transactions = []
 
-# --- Display Transactions as Table ---
+# --- Balance Summary ---
+if transactions:
+    credit_sum = sum([t["amount"] for t in transactions if t["type"] == "Credit"])
+    expense_sum = sum([t["amount"] for t in transactions if t["type"] == "Expense"])
+    balance = credit_sum - expense_sum
+
+    st.subheader("💰 Balance Summary")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("💵 Total Credit", f"₹{credit_sum:.2f}")
+    col2.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
+    col3.metric("🧾 Current Balance", f"₹{balance:.2f}")
+
+# --- Display Transactions as Full-Width Table ---
 if transactions:
     df = pd.DataFrame(transactions)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y, %I:%M %p")
@@ -94,34 +106,37 @@ if transactions:
         for _, row in df.iterrows()
     ]
 
-    st.subheader("📊 Transaction History")
-    st.markdown(
-        df[["type","category","Amount","note","created_at"]].to_html(escape=False, index=False),
-        unsafe_allow_html=True
+    html_table = df[["type","category","Amount","note","created_at"]].to_html(
+        escape=False, index=False
     )
 
-    # --- Balance Summary ---
-    credit_sum = sum([t["amount"] for t in transactions if t["type"] == "Credit"])
-    expense_sum = sum([t["amount"] for t in transactions if t["type"] == "Expense"])
-    balance = credit_sum - expense_sum
-
-    st.subheader("💰 Balance Summary")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("💵 Total Credit", f"₹{credit_sum:.2f}")
-    col2.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
-    col3.metric("🧾 Current Balance", f"₹{balance:.2f}")
+    # Full-width CSS
+    st.subheader("📊 Transaction History")
+    st.markdown(f"""
+    <style>
+        table {{ width: 100%; border-collapse: collapse; }}
+        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+        th {{ background-color: #f2f2f2; }}
+    </style>
+    {html_table}
+    """, unsafe_allow_html=True)
 
     # --- Pie Chart ---
     pie_data = pd.DataFrame({
         "Type": ["Credit", "Expense"],
         "Amount": [credit_sum, expense_sum]
     })
-    fig_pie = px.pie(pie_data, names="Type", values="Amount", color="Type",
-                     color_discrete_map={"Credit":"green","Expense":"red"},
-                     title="📊 Credit vs Expense")
+    fig_pie = px.pie(
+        pie_data,
+        names="Type",
+        values="Amount",
+        color="Type",
+        color_discrete_map={"Credit":"green","Expense":"red"},
+        title="📊 Credit vs Expense"
+    )
     st.plotly_chart(fig_pie, use_container_width=True)
 
-    # --- Transaction Over Time Graph ---
+    # --- Transactions Over Time Graph ---
     df_plot = pd.DataFrame(transactions)
     df_plot['created_at'] = pd.to_datetime(df_plot['created_at'])
     fig_bar = px.bar(
