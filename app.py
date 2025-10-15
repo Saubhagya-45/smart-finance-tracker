@@ -1,12 +1,11 @@
 import streamlit as st
 import pandas as pd
 from supabase import create_client
-import uuid
 from datetime import datetime
 
 # --- 🔑 Supabase Configuration ---
-SUPABASE_URL = "https://nhwrefxpvbgftyxyxgpb.supabase.co"   # ⬅️ replace this
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5od3JlZnhwdmJnZnR5eHl4Z3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTg2MDEsImV4cCI6MjA3NTkzNDYwMX0.DJ78pIEUWeTayEK-ytS8QsbwgI08e0epAUeeDo4C9II"                          # ⬅️ replace this
+SUPABASE_URL = "https://nhwrefxpvbgftyxyxgpb.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5od3JlZnhwdmJnZnR5eHl4Z3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTg2MDEsImV4cCI6MjA3NTkzNDYwMX0.DJ78pIEUWeTayEK-ytS8QsbwgI08e0epAUeeDo4C9II"
 
 # Create Supabase client
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -22,9 +21,8 @@ except Exception as e:
 st.set_page_config(page_title="Smart Finance Tracker", layout="centered")
 st.title("💰 Smart Finance Tracker")
 
-# Initialize session
-if "user_id" not in st.session_state:
-    st.session_state.user_id = str(uuid.uuid4())
+# --- Use fixed user_id so data persists ---
+st.session_state.user_id = "default-user"
 
 # --- Transaction Form ---
 st.subheader("➕ Add Transaction")
