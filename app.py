@@ -11,24 +11,23 @@ SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 # Create Supabase client
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- 🧪 Test connection ---
+# --- Test connection ---
 try:
-    response = supabase.table("transactions").select("*").limit(1).execute()
+    supabase.table("transactions").select("*").limit(1).execute()
     st.success("✅ Connected to Supabase successfully!")
 except Exception as e:
     st.error(f"❌ Supabase connection failed: {e}")
 
-# --- Streamlit App Setup ---
+# --- Streamlit App ---
 st.set_page_config(page_title="Smart Finance Tracker", layout="centered")
 st.title("💰 Smart Finance Tracker")
 
-# Initialize user session
+# Initialize session
 if "user_id" not in st.session_state:
     st.session_state.user_id = str(uuid.uuid4())
 
 # --- Transaction Form ---
 st.subheader("➕ Add Transaction")
-
 transaction_type = st.radio("Transaction Type", ["Credit", "Expense"], horizontal=True)
 
 if transaction_type == "Credit":
@@ -74,7 +73,11 @@ if reset_btn:
 
 # --- Load Transactions ---
 try:
-    response = supabase.table("transactions").select("*").eq("user_id", st.session_state.user_id).order("created_at", desc=True).execute()
+    response = supabase.table("transactions") \
+        .select("*") \
+        .eq("user_id", st.session_state.user_id) \
+        .order("created_at", desc=True) \
+        .execute()
     transactions = response.data if response.data else []
 except Exception as e:
     st.error(f"Error fetching transactions: {e}")
@@ -85,17 +88,18 @@ if transactions:
     df = pd.DataFrame(transactions)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y, %I:%M %p")
 
-    # Format colors for Credit (green) and Expense (red)
-    def color_amount(val, ttype):
-        color = "green" if ttype == "Credit" else "red"
-        return f"<span style='color:{color}; font-weight:bold;'>₹{val:.2f}</span>"
-
+    # Color amounts
     df["Amount"] = [
-        color_amount(row["amount"], row["type"]) for _, row in df.iterrows()
+        f"<span style='color:green'>₹{row['amount']:.2f}</span>" if row["type"]=="Credit"
+        else f"<span style='color:red'>₹{row['amount']:.2f}</span>"
+        for _, row in df.iterrows()
     ]
 
     st.subheader("📊 Transaction History")
-    st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
+    st.markdown(
+        df[["type","category","Amount","note","created_at"]].to_html(escape=False, index=False),
+        unsafe_allow_html=True
+    )
 else:
     st.info("No transactions yet. Add one to get started!")
 
