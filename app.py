@@ -2,15 +2,16 @@ import streamlit as st
 import pandas as pd
 from supabase import create_client
 from datetime import datetime
+import plotly.express as px
 
-# --- 🔑 Supabase Configuration ---
+# --- Supabase Configuration ---
 SUPABASE_URL = "https://nhwrefxpvbgftyxyxgpb.supabase.co"
 SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5od3JlZnhwdmJnZnR5eHl4Z3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTg2MDEsImV4cCI6MjA3NTkzNDYwMX0.DJ78pIEUWeTayEK-ytS8QsbwgI08e0epAUeeDo4C9II"
 
 # Create Supabase client
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- Test connection ---
+# Test connection
 try:
     supabase.table("transactions").select("*").limit(1).execute()
     st.success("✅ Connected to Supabase successfully!")
@@ -21,7 +22,7 @@ except Exception as e:
 st.set_page_config(page_title="Smart Finance Tracker", layout="centered")
 st.title("💰 Smart Finance Tracker")
 
-# --- Use fixed user_id so data persists ---
+# Fixed user_id for persistent data
 st.session_state.user_id = "default-user"
 
 # --- Transaction Form ---
@@ -81,11 +82,11 @@ except Exception as e:
     st.error(f"Error fetching transactions: {e}")
     transactions = []
 
-# --- Display Transactions ---
+# --- Display Transactions as Table ---
 if transactions:
     df = pd.DataFrame(transactions)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y, %I:%M %p")
-
+    
     # Color amounts
     df["Amount"] = [
         f"<span style='color:green'>₹{row['amount']:.2f}</span>" if row["type"]=="Credit"
@@ -98,6 +99,20 @@ if transactions:
         df[["type","category","Amount","note","created_at"]].to_html(escape=False, index=False),
         unsafe_allow_html=True
     )
+
+    # --- Plotly Graph ---
+    df_plot = pd.DataFrame(transactions)
+    df_plot['created_at'] = pd.to_datetime(df_plot['created_at'])
+    fig = px.bar(
+        df_plot,
+        x='created_at',
+        y='amount',
+        color='type',
+        labels={'created_at':'Date','amount':'Amount','type':'Transaction Type'},
+        title='💹 Transactions Over Time'
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
 else:
     st.info("No transactions yet. Add one to get started!")
 
