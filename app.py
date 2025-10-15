@@ -1,3 +1,10 @@
+# --- Test connection ---
+try:
+    response = supabase.table("transactions").select("*").limit(1).execute()
+    st.success("✅ Connected to Supabase successfully!")
+except Exception as e:
+    st.error(f"❌ Supabase connection failed: {e}")
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
