@@ -101,35 +101,27 @@ if transactions:
     df = pd.DataFrame(transactions)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y, %I:%M %p")
 
-    df["Amount"] = [
-        f"<span style='color:green'>₹{row['amount']:.2f}</span>" if row["type"]=="Credit"
-        else f"<span style='color:red'>₹{row['amount']:.2f}</span>"
-        for _, row in df.iterrows()
-    ]
+    # Add styled Amount column
+    df["Amount"] = df.apply(
+        lambda row: f"₹{row['amount']:.2f}",
+        axis=1
+    )
+    # Select columns and rename
+    df_display = df[["type","category","Amount","note","created_at"]]
+    df_display.columns = ["Type", "Category", "Amount", "Note", "Date"]
 
-    html_table = df[["type","category","Amount","note","created_at"]].to_html(
-        escape=False,
-        index=False
+    # Color Amount based on type
+    def highlight_amount(val, t):
+        color = "green" if t=="Credit" else "red"
+        return f"color: {color}"
+
+    styled_df = df_display.style.apply(
+        lambda x: [f"color: {'green' if x['Type']=='Credit' else 'red'}" if col=="Amount" else "" for col in x.index],
+        axis=1
     )
 
     st.subheader("📊 Transaction History")
-    st.markdown(f"""
-    <style>
-        table {{
-            border-collapse: collapse;
-            width: 100%;
-        }}
-        th, td {{
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: left;
-        }}
-        th {{
-            background-color: #f2f2f2;
-        }}
-    </style>
-    {html_table}
-    """, unsafe_allow_html=True)
+    st.dataframe(styled_df, use_container_width=True)
 
     # --- Pie Chart ---
     pie_data = pd.DataFrame({
