@@ -3,6 +3,7 @@ import pandas as pd
 from supabase import create_client
 from datetime import datetime
 import plotly.express as px
+import uuid  # for unique session IDs
 
 # --- Supabase Configuration ---
 SUPABASE_URL = "https://nhwrefxpvbgftyxyxgpb.supabase.co"
@@ -22,8 +23,9 @@ except Exception as e:
 st.set_page_config(page_title="Smart Finance Tracker", layout="wide")
 st.title("💰 Smart Finance Tracker")
 
-# Fixed user_id for persistent data
-st.session_state.user_id = "default-user"
+# --- Session-based User ID ---
+if "user_id" not in st.session_state:
+    st.session_state.user_id = str(uuid.uuid4())  # unique ID for each session
 
 # --- Transaction Form ---
 st.subheader("➕ Add Transaction")
@@ -94,12 +96,11 @@ if transactions:
     col2.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
     col3.metric("🧾 Current Balance", f"₹{balance:.2f}")
 
-# --- Transaction History Table (Original style) ---
+# --- Transaction History Table ---
 if transactions:
     df = pd.DataFrame(transactions)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y, %I:%M %p")
 
-    # Color only the Amount column
     df["Amount"] = [
         f"<span style='color:green'>₹{row['amount']:.2f}</span>" if row["type"]=="Credit"
         else f"<span style='color:red'>₹{row['amount']:.2f}</span>"
@@ -116,6 +117,7 @@ if transactions:
     <style>
         table {{
             border-collapse: collapse;
+            width: 100%;
         }}
         th, td {{
             border: 1px solid #ccc;
