@@ -94,12 +94,12 @@ if transactions:
     col2.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
     col3.metric("🧾 Current Balance", f"₹{balance:.2f}")
 
-# --- Display Transactions as Full-Width Table ---
+# --- Transaction History Table (Full width, like previous version) ---
 if transactions:
     df = pd.DataFrame(transactions)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y, %I:%M %p")
-    
-    # Color amounts
+
+    # Color the Amount column only
     df["Amount"] = [
         f"<span style='color:green'>₹{row['amount']:.2f}</span>" if row["type"]=="Credit"
         else f"<span style='color:red'>₹{row['amount']:.2f}</span>"
@@ -107,16 +107,25 @@ if transactions:
     ]
 
     html_table = df[["type","category","Amount","note","created_at"]].to_html(
-        escape=False, index=False
+        escape=False,
+        index=False
     )
 
-    # Full-width CSS
     st.subheader("📊 Transaction History")
     st.markdown(f"""
     <style>
-        table {{ width: 100%; border-collapse: collapse; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
-        th {{ background-color: #f2f2f2; }}
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+        }}
+        th, td {{
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f2f2f2;
+        }}
     </style>
     {html_table}
     """, unsafe_allow_html=True)
