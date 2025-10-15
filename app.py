@@ -7,8 +7,8 @@ import uuid
 # ----------------------------
 # SUPABASE SETUP
 # ----------------------------
-SUPABASE_URL = "https://zsgnsdsnaryzzquhthng.supabase.co"  # Replace with your Supabase URL
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpzZ25zZHNuYXJ5enpxdWh0aG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTE1MTgsImV4cCI6MjA3NTkyNzUxOH0.B5C2P7z_oU6DAl6N3CVnp2JvewNXe5puse6gtT5for0"                   # Replace with your anon/public key
+SUPABASE_URL = "https://nhwrefxpvbgftyxyxgpb.supabase.co"  # Replace with your Supabase URL
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5od3JlZnhwdmJnZnR5eHl4Z3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTg2MDEsImV4cCI6MjA3NTkzNDYwMX0.DJ78pIEUWeTayEK-ytS8QsbwgI08e0epAUeeDo4C9II"                   # Replace with your anon/public key
 
 try:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
