@@ -19,7 +19,7 @@ except Exception as e:
     st.error(f"❌ Supabase connection failed: {e}")
 
 # --- Streamlit App ---
-st.set_page_config(page_title="Smart Finance Tracker", layout="centered")
+st.set_page_config(page_title="Smart Finance Tracker", layout="wide")
 st.title("💰 Smart Finance Tracker")
 
 # Fixed user_id for persistent data
@@ -100,10 +100,31 @@ if transactions:
         unsafe_allow_html=True
     )
 
-    # --- Plotly Graph ---
+    # --- Balance Summary ---
+    credit_sum = sum([t["amount"] for t in transactions if t["type"] == "Credit"])
+    expense_sum = sum([t["amount"] for t in transactions if t["type"] == "Expense"])
+    balance = credit_sum - expense_sum
+
+    st.subheader("💰 Balance Summary")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("💵 Total Credit", f"₹{credit_sum:.2f}")
+    col2.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
+    col3.metric("🧾 Current Balance", f"₹{balance:.2f}")
+
+    # --- Pie Chart ---
+    pie_data = pd.DataFrame({
+        "Type": ["Credit", "Expense"],
+        "Amount": [credit_sum, expense_sum]
+    })
+    fig_pie = px.pie(pie_data, names="Type", values="Amount", color="Type",
+                     color_discrete_map={"Credit":"green","Expense":"red"},
+                     title="📊 Credit vs Expense")
+    st.plotly_chart(fig_pie, use_container_width=True)
+
+    # --- Transaction Over Time Graph ---
     df_plot = pd.DataFrame(transactions)
     df_plot['created_at'] = pd.to_datetime(df_plot['created_at'])
-    fig = px.bar(
+    fig_bar = px.bar(
         df_plot,
         x='created_at',
         y='amount',
@@ -111,17 +132,7 @@ if transactions:
         labels={'created_at':'Date','amount':'Amount','type':'Transaction Type'},
         title='💹 Transactions Over Time'
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig_bar, use_container_width=True)
 
 else:
     st.info("No transactions yet. Add one to get started!")
-
-# --- Balance Summary ---
-if transactions:
-    credit_sum = sum([t["amount"] for t in transactions if t["type"] == "Credit"])
-    expense_sum = sum([t["amount"] for t in transactions if t["type"] == "Expense"])
-    balance = credit_sum - expense_sum
-
-    st.metric("💵 Total Credit", f"₹{credit_sum:.2f}")
-    st.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
-    st.metric("🧾 Current Balance", f"₹{balance:.2f}")
