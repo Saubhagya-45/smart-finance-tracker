@@ -94,12 +94,12 @@ if transactions:
     col2.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
     col3.metric("🧾 Current Balance", f"₹{balance:.2f}")
 
-# --- Transaction History Table (Full width, like previous version) ---
+# --- Transaction History Table (Original style) ---
 if transactions:
     df = pd.DataFrame(transactions)
     df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y, %I:%M %p")
 
-    # Color the Amount column only
+    # Color only the Amount column
     df["Amount"] = [
         f"<span style='color:green'>₹{row['amount']:.2f}</span>" if row["type"]=="Credit"
         else f"<span style='color:red'>₹{row['amount']:.2f}</span>"
@@ -115,7 +115,6 @@ if transactions:
     st.markdown(f"""
     <style>
         table {{
-            width: 100%;
             border-collapse: collapse;
         }}
         th, td {{
