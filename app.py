@@ -3,49 +3,73 @@ import pandas as pd
 from supabase import create_client
 from datetime import datetime
 import plotly.express as px
-import uuid  # for unique session IDs
+import uuid
 
-# --- Supabase Configuration ---
-SUPABASE_URL = "https://nhwrefxpvbgftyxyxgpb.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5od3JlZnhwdmJnZnR5eHl4Z3BiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAzNTg2MDEsImV4cCI6MjA3NTkzNDYwMX0.DJ78pIEUWeTayEK-ytS8QsbwgI08e0epAUeeDo4C9II"
+# -----------------------------
+# PAGE CONFIG (MUST BE FIRST)
+# -----------------------------
+st.set_page_config(page_title="Smart Finance Tracker", layout="wide")
 
-# Create Supabase client
+# -----------------------------
+# SUPABASE CONFIG (SECURE)
+# -----------------------------
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Test connection
+# -----------------------------
+# APP TITLE
+# -----------------------------
+st.title("💰 Smart Finance Tracker")
+
+# -----------------------------
+# TEST CONNECTION
+# -----------------------------
 try:
     supabase.table("transactions").select("*").limit(1).execute()
     st.success("✅ Connected to Supabase successfully!")
 except Exception as e:
     st.error(f"❌ Supabase connection failed: {e}")
 
-# --- Streamlit App ---
-st.set_page_config(page_title="Smart Finance Tracker", layout="wide")
-st.title("💰 Smart Finance Tracker")
-
-# --- Session-based User ID ---
+# -----------------------------
+# SESSION USER ID
+# -----------------------------
 if "user_id" not in st.session_state:
-    st.session_state.user_id = str(uuid.uuid4())  # unique ID for each session
+    st.session_state.user_id = str(uuid.uuid4())
 
-# --- Transaction Form ---
+# -----------------------------
+# TRANSACTION FORM
+# -----------------------------
 st.subheader("➕ Add Transaction")
-transaction_type = st.radio("Transaction Type", ["Credit", "Expense"], horizontal=True)
+
+transaction_type = st.radio(
+    "Transaction Type",
+    ["Credit", "Expense"],
+    horizontal=True
+)
 
 if transaction_type == "Credit":
-    category = st.selectbox("Category", ["Salary", "Bonus", "Other Income"])
+    category = st.selectbox(
+        "Category",
+        ["Salary", "Bonus", "Other Income"]
+    )
 else:
-    category = st.selectbox("Category", ["Food", "Transport", "Bills", "Shopping", "Entertainment", "Other"])
+    category = st.selectbox(
+        "Category",
+        ["Food", "Transport", "Bills", "Shopping", "Entertainment", "Other"]
+    )
 
 amount = st.number_input("Amount (₹)", min_value=0.0, format="%.2f")
 note = st.text_input("Note (optional)")
 
 col1, col2 = st.columns(2)
-with col1:
-    add_btn = st.button("💾 Add Transaction", use_container_width=True)
-with col2:
-    reset_btn = st.button("🗑️ Reset All Transactions", use_container_width=True)
+add_btn = col1.button("💾 Add Transaction", use_container_width=True)
+reset_btn = col2.button("🗑️ Reset All Transactions", use_container_width=True)
 
-# --- Add Transaction ---
+# -----------------------------
+# ADD TRANSACTION
+# -----------------------------
 if add_btn:
     if amount > 0:
         try:
@@ -55,108 +79,104 @@ if add_btn:
                 "category": category,
                 "amount": amount,
                 "note": note,
-                "created_at": datetime.now().isoformat()
+                "created_at": datetime.utcnow().isoformat()
             }
             supabase.table("transactions").insert(data).execute()
-            st.success("✅ Transaction added successfully!")
+            st.success("✅ Transaction added!")
         except Exception as e:
             st.error(f"Error adding transaction: {e}")
     else:
-        st.warning("⚠️ Please enter an amount greater than 0.")
+        st.warning("⚠️ Amount must be greater than 0")
 
-# --- Reset Transactions ---
+# -----------------------------
+# RESET TRANSACTIONS
+# -----------------------------
 if reset_btn:
     try:
-        supabase.table("transactions").delete().eq("user_id", st.session_state.user_id).execute()
+        supabase.table("transactions") \
+            .delete() \
+            .eq("user_id", st.session_state.user_id) \
+            .execute()
         st.warning("🧹 All transactions deleted!")
     except Exception as e:
         st.error(f"Error deleting transactions: {e}")
 
-# --- Load Transactions ---
+# -----------------------------
+# LOAD TRANSACTIONS
+# -----------------------------
 try:
-    response = supabase.table("transactions") \
-        .select("*") \
-        .eq("user_id", st.session_state.user_id) \
-        .order("created_at", desc=True) \
+    response = (
+        supabase.table("transactions")
+        .select("*")
+        .eq("user_id", st.session_state.user_id)
+        .order("created_at", desc=True)
         .execute()
-    transactions = response.data if response.data else []
+    )
+    transactions = response.data or []
 except Exception as e:
     st.error(f"Error fetching transactions: {e}")
     transactions = []
 
-# --- Balance Summary ---
+# -----------------------------
+# SUMMARY
+# -----------------------------
 if transactions:
-    credit_sum = sum([t["amount"] for t in transactions if t["type"] == "Credit"])
-    expense_sum = sum([t["amount"] for t in transactions if t["type"] == "Expense"])
+
+    credit_sum = sum(t["amount"] for t in transactions if t["type"] == "Credit")
+    expense_sum = sum(t["amount"] for t in transactions if t["type"] == "Expense")
     balance = credit_sum - expense_sum
 
     st.subheader("💰 Balance Summary")
-    col1, col2, col3 = st.columns(3)
-    col1.metric("💵 Total Credit", f"₹{credit_sum:.2f}")
-    col2.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
-    col3.metric("🧾 Current Balance", f"₹{balance:.2f}")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("💵 Total Credit", f"₹{credit_sum:.2f}")
+    c2.metric("💸 Total Expense", f"₹{expense_sum:.2f}")
+    c3.metric("🧾 Current Balance", f"₹{balance:.2f}")
 
-# --- Transaction History Table ---
-if transactions:
+    # -----------------------------
+    # TABLE
+    # -----------------------------
     df = pd.DataFrame(transactions)
-    df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime("%d %b %Y, %I:%M %p")
-
-    df["Amount"] = [
-        f"<span style='color:green'>₹{row['amount']:.2f}</span>" if row["type"]=="Credit"
-        else f"<span style='color:red'>₹{row['amount']:.2f}</span>"
-        for _, row in df.iterrows()
-    ]
-
-    html_table = df[["type","category","Amount","note","created_at"]].to_html(
-        escape=False,
-        index=False
+    df["created_at"] = pd.to_datetime(df["created_at"]).dt.strftime(
+        "%d %b %Y, %I:%M %p"
     )
 
     st.subheader("📊 Transaction History")
-    st.markdown(f"""
-    <style>
-        table {{
-            border-collapse: collapse;
-            width: 100%;
-        }}
-        th, td {{
-            border: 1px solid #ccc;
-            padding: 8px;
-            text-align: left;
-        }}
-        th {{
-            background-color: #f2f2f2;
-        }}
-    </style>
-    {html_table}
-    """, unsafe_allow_html=True)
+    st.dataframe(
+        df[["type", "category", "amount", "note", "created_at"]],
+        use_container_width=True
+    )
 
-    # --- Pie Chart ---
+    # -----------------------------
+    # PIE CHART
+    # -----------------------------
     pie_data = pd.DataFrame({
         "Type": ["Credit", "Expense"],
         "Amount": [credit_sum, expense_sum]
     })
+
     fig_pie = px.pie(
         pie_data,
         names="Type",
         values="Amount",
-        color="Type",
-        color_discrete_map={"Credit":"green","Expense":"red"},
         title="📊 Credit vs Expense"
     )
+
     st.plotly_chart(fig_pie, use_container_width=True)
 
-    # --- Transactions Over Time Graph ---
+    # -----------------------------
+    # BAR CHART
+    # -----------------------------
     df_plot = pd.DataFrame(transactions)
-    df_plot['created_at'] = pd.to_datetime(df_plot['created_at'])
+    df_plot["created_at"] = pd.to_datetime(df_plot["created_at"])
+
     fig_bar = px.bar(
         df_plot,
-        x='created_at',
-        y='amount',
-        color='type',
-        labels={'created_at':'Date','amount':'Amount','type':'Transaction Type'},
-        title='💹 Transactions Over Time'
+        x="created_at",
+        y="amount",
+        color="type",
+        title="💹 Transactions Over Time"
     )
+
     st.plotly_chart(fig_bar, use_container_width=True)
 
 else:
